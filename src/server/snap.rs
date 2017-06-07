@@ -79,6 +79,18 @@ impl Display for Task {
 struct SnapChunk {
     snap: Arc<RwLock<Box<Snapshot>>>,
     remain_bytes: usize,
+    panic: bool,
+}
+
+impl SnapChunk {
+    pub fn new(snap: Arc<RwLock<Box<Snapshot>>>, size: usize) -> SnapChunk {
+        let panic = size > SNAP_CHUNK_LEN;
+        SnapChunk {
+            snap: snap,
+            remain_bytes: size,
+            panic: panic,
+        }
+    }
 }
 
 const SNAP_CHUNK_LEN: usize = 1024 * 1024;
@@ -92,6 +104,10 @@ impl Iterator for SnapChunk {
             n if n > SNAP_CHUNK_LEN => vec![0; SNAP_CHUNK_LEN],
             n => vec![0; n],
         };
+        if self.panic && self.remain_bytes <= SNAP_CHUNK_LEN {
+            panic!("panic when sending snapshot, remain_bytes: {}",
+                   self.remain_bytes);
+        }
         match self.snap.wl().read_exact(buf.as_mut_slice()) {
             Ok(_) => {
                 self.remain_bytes -= buf.len();
@@ -133,10 +149,7 @@ fn send_snap(env: Arc<Environment>,
     let s = Arc::new(RwLock::new(s));
 
     let chunks = {
-        let snap_chunk = SnapChunk {
-            snap: s.clone(),
-            remain_bytes: total_size as usize,
-        };
+        let snap_chunk = SnapChunk::new(s.clone(), total_size as usize);
         let first: Once<Result<(SnapshotChunk, _)>> = iter::once({
             let mut chunk = SnapshotChunk::new();
             chunk.set_message(msg);
