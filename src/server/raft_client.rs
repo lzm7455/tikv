@@ -41,8 +41,8 @@ impl Conn {
         		.max_concurrent_stream(1024)
                     .max_receive_message_len(10 * 1024 * 1024)
                     .max_send_message_len(128 * 1024 * 1024)
-        	        //	.http2_max_frame_size(64 * 1024)
-                    .http2_write_buffer_size(32 * 1024)
+        	        //.http2_max_frame_size(64 * 1024)
+                    //.http2_write_buffer_size(32 * 1024)
                     .stream_initial_window_size(2 * 1024 * 1024)
         		.connect(&format!("{}", addr));
         let client = TikvClient::new(channel);
